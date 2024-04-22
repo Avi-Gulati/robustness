@@ -147,17 +147,15 @@ class Attacker(ch.nn.Module):
         step = step_class(eps=eps, orig_input=orig_input, step_size=step_size) 
 
         def calc_loss(inp, target):
-            '''
-            Calculates the loss of an input with respect to target labels
-            Uses custom loss (if provided) otherwise the criterion
-            '''
             if should_normalize:
+                print("Shape before normalization:", inp.shape)
                 inp = self.normalize(inp)
+                print("Shape after normalization:", inp.shape)
             output = self.model(inp)
             if custom_loss:
                 return custom_loss(self.model, inp, target)
-
             return criterion(output, target), output
+
 
         # Main function for making adversarial examples
         def get_adv_examples(x):
