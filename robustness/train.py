@@ -311,7 +311,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
-                model, opt, epoch, args.adv_train, writer, dictForLifetime = adv_examples)
+                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples)
         last_epoch = (epoch == (args.epochs - 1))
 
         # evaluate on validation set
