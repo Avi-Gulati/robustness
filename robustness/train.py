@@ -480,20 +480,21 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
         # Check if the limit is reached
         if image_count >= 100:
             print(f"Stopping early after processing {image_count} images.")
-            if adv and adv_examples is not None:
+            if adv and adv_examples:
                 with ch.no_grad():
                     model.eval()  # Set model to evaluation mode
-                    for img_id, metadata in adv_examples.items():
-                        img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
-                        label_org = metadata['label']
-                
-                        # Reclassify the adversarial image
-                        output = model(img_adv)
-                        pred_label = output.max(1)[1].item()  # Predicted label
-                
-                        # Update epoch distance only if the prediction does not match the original label
-                        if pred_label != label_org:
-                            adv_examples[img_id]['epoch_distance'] += 1
+                    if adv_examples:
+                        for img_id, metadata in adv_examples.items():
+                            img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
+                            label_org = metadata['label']
+                    
+                            # Reclassify the adversarial image
+                            output = model(img_adv)
+                            pred_label = output.max(1)[1].item()  # Predicted label
+                    
+                            # Update epoch distance only if the prediction does not match the original label
+                            if pred_label != label_org:
+                                adv_examples[img_id]['epoch_distance'] += 1
                 
                     model.train()  # Set model back to training mode
 
