@@ -482,7 +482,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
         # Check if the limit is reached
         if image_count >= 100:
             print(f"Stopping early after processing {image_count} images.")
-            with torch.no_grad():
+            with ch.no_grad():
                 model.eval()  # Set model to evaluation mode
                 for img_id, metadata in adv_examples.items():
                     img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
