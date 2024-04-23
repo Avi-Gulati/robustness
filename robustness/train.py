@@ -441,6 +441,9 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         }
 
     iterator = tqdm(enumerate(loader), total=len(loader))
+
+    # AVI CHANGE
+    image_count = 0
     for i, (inp, target) in iterator:
        # measure data loading time
         target = target.cuda(non_blocking=True)
@@ -449,7 +452,14 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         loss = train_criterion(output, target)
 
         if len(loss.shape) > 0: loss = loss.mean()
-
+            
+        # AVI CHANGE
+        image_count += inp.size(0)
+        # Check if the limit is reached
+        if image_count >= 100:
+            print(f"Stopping early after processing {image_count} images.")
+            break  # Break out of the loop if 100 images have been processed
+        
         model_logits = output[0] if (type(output) is tuple) else output
 
         # measure accuracy and record loss
