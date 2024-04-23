@@ -175,7 +175,7 @@ def eval_model(args, model, loader, store):
     return log_info
 
 def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
-            store=None, update_params=None, disable_no_grad=False, adv_examples = {}):
+            store=None, update_params=None, disable_no_grad=False):
     """
     Main function for training a model. 
 
@@ -305,7 +305,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
 
     # Timestamp for training start time
     start_time = time.time()
-    
+    adv_examples = {}
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
@@ -480,7 +480,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
         # Check if the limit is reached
         if image_count >= 100:
             print(f"Stopping early after processing {image_count} images.")
-            if adv and adv_examples:
+            if adv and adv_examples is not None:
                 with ch.no_grad():
                     model.eval()  # Set model to evaluation mode
                     for img_id, metadata in adv_examples.items():
