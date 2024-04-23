@@ -306,10 +306,12 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
     # Timestamp for training start time
     start_time = time.time()
 
+    adv_examples = {}
+    
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
-                model, opt, epoch, args.adv_train, writer)
+                model, opt, epoch, args.adv_train, writer, dictForLifetime = adv_examples)
         last_epoch = (epoch == (args.epochs - 1))
 
         # evaluate on validation set
@@ -320,7 +322,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
             'epoch': epoch+1,
             'amp': amp.state_dict() if args.mixed_precision else None,
         }
-
+    
 
         def save_checkpoint(filename):
             ckpt_save_path = os.path.join(args.out_dir if not store else \
@@ -374,9 +376,16 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
         if schedule: schedule.step()
         if has_attr(args, 'epoch_hook'): args.epoch_hook(model, log_info)
 
+    # Avi CHANGE
+    adv_examples_file_path = os.path.join(args.out_dir, 'adv_examples.pkl')
+    with open(adv_examples_file_path, 'wb') as handle:
+        pickle.dump(adv_examples, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    print(f"Adversarial examples dictionary saved to {adv_examples_file_path}")
+
     return model
 
-def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
+def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples=None):
     """
     *Internal function* (refer to the train_model and eval_model functions for
     how to train and evaluate models).
@@ -442,6 +451,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
 
     iterator = tqdm(enumerate(loader), total=len(loader))
 
+    
     # AVI CHANGE
     image_count = 0
     for i, (inp, target) in iterator:
@@ -454,10 +464,40 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         if len(loss.shape) > 0: loss = loss.mean()
             
         # AVI CHANGE
+        if adv and adv_examples:
+            for j in range(len(final_inp)):
+                img_adv = final_inp[j].detach()  # Detach the adversarial image
+                img_orig = inp[j].detach()  # Detach the original image
+                label_org = target[j].item()  # Original label
+        
+                # Store the adversarial and original examples along with metadata
+                adv_examples[image_count] = {
+                    'original_image': img_orig,
+                    'adversarial_image': img_adv,
+                    'label': label_org,
+                    'epoch_introduced': epoch,
+                    'epoch_distance': 0
+                }
         image_count += inp.size(0)
         # Check if the limit is reached
         if image_count >= 100:
             print(f"Stopping early after processing {image_count} images.")
+            with torch.no_grad():
+                model.eval()  # Set model to evaluation mode
+                for img_id, metadata in adv_examples.items():
+                    img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
+                    label_org = metadata['label']
+            
+                    # Reclassify the adversarial image
+                    output = model(img_adv)
+                    pred_label = output.max(1)[1].item()  # Predicted label
+            
+                    # Update epoch distance only if the prediction does not match the original label
+                    if pred_label != label_org:
+                        adv_examples[img_id]['epoch_distance'] += 1
+            
+                model.train()  # Set model back to training mode
+
             break  # Break out of the loop if 100 images have been processed
         
         model_logits = output[0] if (type(output) is tuple) else output
