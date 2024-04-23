@@ -175,7 +175,7 @@ def eval_model(args, model, loader, store):
     return log_info
 
 def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
-            store=None, update_params=None, disable_no_grad=False):
+            store=None, update_params=None, disable_no_grad=False, adv_examples = {}):
     """
     Main function for training a model. 
 
@@ -305,8 +305,6 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
 
     # Timestamp for training start time
     start_time = time.time()
-
-    adv_examples = {}
     
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
@@ -385,7 +383,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
 
     return model
 
-def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples=None):
+def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples={}):
     """
     *Internal function* (refer to the train_model and eval_model functions for
     how to train and evaluate models).
