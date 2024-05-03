@@ -478,7 +478,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
                 }
         image_count += inp.size(0)
         # Check if the limit is reached
-        if image_count >= 100:
+        if image_count >= 1000:
             print(f"Stopping early after processing {image_count} images.")
             if adv and adv_examples:
                 with ch.no_grad():
