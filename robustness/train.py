@@ -308,11 +308,11 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
     adv_examples = {}
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
-        firstepoch = False
+        areWeFirstEpoch = False
         if epoch == 1:
-            firstepoch = True
+            areWeFirstEpoch = True
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
-                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples, firstepoch)
+                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples, firstepoch=areWeFirstEpoch)
         print(len(adv_examples)
         last_epoch = (epoch == (args.epochs - 1))
 
