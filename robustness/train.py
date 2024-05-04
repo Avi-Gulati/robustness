@@ -12,6 +12,7 @@ import dill
 import os
 import time
 import warnings
+import pickle
 
 if int(os.environ.get("NOTEBOOK_MODE", 0)) == 1:
     from tqdm import tqdm_notebook as tqdm
@@ -310,7 +311,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
         # train for one epoch
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
                 model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples)
-        print(len(adv_examples))
+        
         last_epoch = (epoch == (args.epochs - 1))
 
         # evaluate on validation set
@@ -321,7 +322,19 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
             'epoch': epoch+1,
             'amp': amp.state_dict() if args.mixed_precision else None,
         }
-    
+
+        if adv_examples:
+            for img_id, metadata in adv_examples.items():
+                img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
+                label_org = metadata['label']
+        
+                # Reclassify the adversarial image
+                output = model(img_adv)
+                pred_label = output[0].max(1)[1].item()  # Predicted label
+        
+                # Update epoch distance only if the prediction does not match the original label
+                if pred_label != label_org:
+                    adv_examples[img_id]['epoch_distance'] += 1
 
         def save_checkpoint(filename):
             ckpt_save_path = os.path.join(args.out_dir if not store else \
@@ -474,7 +487,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
                     label_org = target[j].item()  # Original label
             
                     # Store the adversarial and original examples along with metadata
-                    adv_examples[image_count] = {
+                    adv_examples[i] = {
                         'original_image': img_orig,
                         'adversarial_image': img_adv,
                         'label': label_org,
