@@ -308,8 +308,12 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
     adv_examples = {}
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
+        firstepoch = False
+        if epoch == 1:
+            firstepoch = True
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
-                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples)
+                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples, firstepoch)
+        print(len(adv_examples)
         last_epoch = (epoch == (args.epochs - 1))
 
         # evaluate on validation set
@@ -383,7 +387,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
 
     return model
 
-def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples={}):
+def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples={}, firstepoch = False):
     """
     *Internal function* (refer to the train_model and eval_model functions for
     how to train and evaluate models).
@@ -462,43 +466,25 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
         if len(loss.shape) > 0: loss = loss.mean()
             
         # AVI CHANGE
-        if adv and adv_examples:
-            for j in range(len(final_inp)):
-                img_adv = final_inp[j].detach()  # Detach the adversarial image
-                img_orig = inp[j].detach()  # Detach the original image
-                label_org = target[j].item()  # Original label
-        
-                # Store the adversarial and original examples along with metadata
-                adv_examples[image_count] = {
-                    'original_image': img_orig,
-                    'adversarial_image': img_adv,
-                    'label': label_org,
-                    'epoch_introduced': epoch,
-                    'epoch_distance': 0
-                }
-        image_count += inp.size(0)
+        if firstepoch and adv and adv_examples:
+            if (i%1000==0)
+                for j in range(len(final_inp)):
+                    img_adv = final_inp[j].detach()  # Detach the adversarial image
+                    img_orig = inp[j].detach()  # Detach the original image
+                    label_org = target[j].item()  # Original label
+            
+                    # Store the adversarial and original examples along with metadata
+                    adv_examples[image_count] = {
+                        'original_image': img_orig,
+                        'adversarial_image': img_adv,
+                        'label': label_org,
+                        'epoch_introduced': epoch,
+                        'epoch_distance': 0
+                    }
         # Check if the limit is reached
-        if image_count >= 1000:
+        if image_count >= 2000:
             print(f"Stopping early after processing {image_count} images.")
-            if adv and adv_examples:
-                with ch.no_grad():
-                    model.eval()  # Set model to evaluation mode
-                    if adv_examples:
-                        for img_id, metadata in adv_examples.items():
-                            img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
-                            label_org = metadata['label']
-                    
-                            # Reclassify the adversarial image
-                            output = model(img_adv)
-                            pred_label = output.max(1)[1].item()  # Predicted label
-                    
-                            # Update epoch distance only if the prediction does not match the original label
-                            if pred_label != label_org:
-                                adv_examples[img_id]['epoch_distance'] += 1
-                
-                    model.train()  # Set model back to training mode
-
-            break  # Break out of the loop if 100 images have been processed
+            break
         
         model_logits = output[0] if (type(output) is tuple) else output
 
