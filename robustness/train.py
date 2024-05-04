@@ -308,11 +308,8 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
     adv_examples = {}
     for epoch in range(start_epoch, args.epochs):
         # train for one epoch
-        areWeFirstEpoch = False
-        if epoch == 1:
-            areWeFirstEpoch = True
         train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
-                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples, firstepoch=areWeFirstEpoch)
+                model, opt, epoch, args.adv_train, writer, adv_examples = adv_examples)
         print(len(adv_examples))
         last_epoch = (epoch == (args.epochs - 1))
 
@@ -378,16 +375,19 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
         if schedule: schedule.step()
         if has_attr(args, 'epoch_hook'): args.epoch_hook(model, log_info)
 
-    # Avi CHANGE
+    # Before opening the file to write
     adv_examples_file_path = os.path.join(args.out_dir, 'adv_examples.pkl')
+    os.makedirs(os.path.dirname(adv_examples_file_path), exist_ok=True)
+    
     with open(adv_examples_file_path, 'wb') as handle:
         pickle.dump(adv_examples, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
     print(f"Adversarial examples dictionary saved to {adv_examples_file_path}")
 
     return model
 
-def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples={}, firstepoch = False):
+def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_examples={}):
     """
     *Internal function* (refer to the train_model and eval_model functions for
     how to train and evaluate models).
@@ -466,8 +466,8 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
         if len(loss.shape) > 0: loss = loss.mean()
             
         # AVI CHANGE
-        if firstepoch and adv and adv_examples:
-            if (i%1000==0)
+        if epoch == 0 and adv:
+            if (i%25==0):
                 for j in range(len(final_inp)):
                     img_adv = final_inp[j].detach()  # Detach the adversarial image
                     img_orig = inp[j].detach()  # Detach the original image
@@ -482,8 +482,8 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
                         'epoch_distance': 0
                     }
         # Check if the limit is reached
-        if image_count >= 2000:
-            print(f"Stopping early after processing {image_count} images.")
+        if i >= 100:
+            print(f"Stopping early after processing {i} images.")
             break
         
         model_logits = output[0] if (type(output) is tuple) else output
