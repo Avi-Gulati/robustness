@@ -325,14 +325,13 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
 
         if adv_examples:
             for img_id, metadata in adv_examples.items():
-                img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  # Add batch dimension and move to GPU
+                img_adv = metadata['adversarial_image'].unsqueeze(0).cuda()  
                 label_org = metadata['label']
         
                 # Reclassify the adversarial image
                 output = model(img_adv)
-                pred_label = output[0].max(1)[1].item()  # Predicted label
+                pred_label = output[0].max(1)[1].item()  
         
-                # Update epoch distance only if the prediction does not match the original label
                 if pred_label != label_org:
                     adv_examples[img_id]['epoch_distance'] += 1
 
@@ -470,7 +469,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
     # AVI CHANGE
     image_count = 0
     for i, (inp, target) in iterator:
-       # measure data loading time
+        
         target = target.cuda(non_blocking=True)
         output, final_inp = model(inp, target=target, make_adv=adv,
                                   **attack_kwargs)
@@ -482,11 +481,11 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
         if epoch == 0 and adv:
             if (i%25==0):
                 for j in range(len(final_inp)):
-                    img_adv = final_inp[j].detach()  # Detach the adversarial image
-                    img_orig = inp[j].detach()  # Detach the original image
-                    label_org = target[j].item()  # Original label
+                    img_adv = final_inp[j].detach()  
+                    img_orig = inp[j].detach()  
+                    label_org = target[j].item()  
             
-                    # Store the adversarial and original examples along with metadata
+
                     adv_examples[i] = {
                         'original_image': img_orig,
                         'adversarial_image': img_adv,
@@ -494,14 +493,9 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer, adv_exa
                         'epoch_introduced': epoch,
                         'epoch_distance': 0
                     }
-        # Check if the limit is reached
-        if i >= 100:
-            print(f"Stopping early after processing {i} images.")
-            break
         
         model_logits = output[0] if (type(output) is tuple) else output
 
-        # measure accuracy and record loss
         top1_acc = float('nan')
         top5_acc = float('nan')
         try:
